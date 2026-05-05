@@ -16,7 +16,6 @@ export function useChat() {
   const sendMessage = useCallback(async (question: string) => {
     if (isLoading) return;
 
-    // Abort any previous request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -90,12 +89,13 @@ export function useChat() {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Merge incremental deltas into blocks
 // ---------------------------------------------------------------------------
 
 function appendEvent(blocks: MessageBlock[], event: SSEEvent): MessageBlock[] {
   const updated = [...blocks];
 
+  // Text delta — append to last text block or create new one
   if (event.type === "text" && event.content) {
     const last = updated[updated.length - 1];
     if (last?.kind === "text") {
@@ -105,10 +105,17 @@ function appendEvent(blocks: MessageBlock[], event: SSEEvent): MessageBlock[] {
     }
   }
 
+  // Thinking delta — append to last thinking block or create new one
   if (event.type === "thinking" && event.content) {
-    updated.push({ kind: "thinking", content: event.content });
+    const last = updated[updated.length - 1];
+    if (last?.kind === "thinking") {
+      updated[updated.length - 1] = { kind: "thinking", content: last.content + event.content };
+    } else {
+      updated.push({ kind: "thinking", content: event.content });
+    }
   }
 
+  // Tool call — new block
   if (event.type === "tool_call" && event.tool && event.call_id) {
     updated.push({
       kind: "tool_call",
@@ -118,6 +125,7 @@ function appendEvent(blocks: MessageBlock[], event: SSEEvent): MessageBlock[] {
     });
   }
 
+  // Tool result — new block
   if (event.type === "tool_result" && event.call_id) {
     updated.push({
       kind: "tool_result",

@@ -2,6 +2,8 @@ import type { MessageBlock } from "../types";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolCallBlock, ToolResultBlock } from "./ToolCallBlock";
 import { PlotlyChart } from "./PlotlyChart";
+import ReactMarkdown from "react-markdown";
+
 
 interface Props {
   blocks: MessageBlock[];
@@ -40,11 +42,8 @@ export function MessageList({ blocks, isStreaming }: Props) {
 
           case "text":
             return (
-              <div
-                key={i}
-                className="text-sm text-foreground leading-relaxed whitespace-pre-wrap"
-              >
-                {block.content}
+              <div key={i} className="text-sm text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown>{block.content}</ReactMarkdown>
                 {isStreaming && (
                   <span className="inline-block w-1.5 h-4 ml-0.5 bg-foreground animate-pulse rounded-sm" />
                 )}
