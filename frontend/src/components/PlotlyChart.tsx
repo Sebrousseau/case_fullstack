@@ -3,7 +3,7 @@ interface Props {
 }
 
 export function PlotlyChart({ plotly_file }: Props) {
-  const url = `http://localhost:8000/${plotly_file}`;
+  const url = `/${plotly_file}`;
 
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 overflow-hidden">

@@ -1,8 +1,6 @@
 services:
-  agent:
+  backend:
     build: .
-    stdin_open: true
-    tty: true
     env_file:
       - .env
     ports:
@@ -10,3 +8,12 @@ services:
     volumes:
       - ./data:/app/data
       - ./output:/app/output
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
