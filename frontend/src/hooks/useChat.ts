@@ -85,7 +85,7 @@ export function useChat() {
     }
   }, [isLoading]);
 
-  return { turns, isLoading, sendMessage };
+  return { turns, isLoading, sendMessage, setTurns };
 }
 
 // ---------------------------------------------------------------------------
