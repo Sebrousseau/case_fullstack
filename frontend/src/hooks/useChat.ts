@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { MessageBlock, SSEEvent } from "../types";
+import type { MessageBlock, SSEEvent } from "../types";
 
 export interface ChatTurn {
   question: string;
