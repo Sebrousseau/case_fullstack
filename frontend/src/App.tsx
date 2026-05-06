@@ -21,21 +21,32 @@ export default function App() {
   } = useChatHistory();
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const prevActiveIdRef = useRef<string | null>(activeId);
-  const prevTurnsLengthRef = useRef(0);
 
+  // Track scroll position — stop auto-scroll if user scrolls up
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const threshold = 100;
+    isAtBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
+  // Auto-scroll on every turns update (covers streaming deltas + new turns)
   useEffect(() => {
-    const turnsLength = turns.length;
-    const hasNewTurn = turnsLength > prevTurnsLengthRef.current;
-    const hasConversationChanged = activeId !== prevActiveIdRef.current;
-
-    if (hasNewTurn || hasConversationChanged) {
+    if (isAtBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
+  }, [turns]);
 
-    prevTurnsLengthRef.current = turnsLength;
-    prevActiveIdRef.current = activeId;
-  }, [turns.length, activeId]);
+  // Force scroll to bottom when switching conversations
+  useEffect(() => {
+    if (activeId !== prevActiveIdRef.current) {
+      isAtBottomRef.current = true;
+      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+      prevActiveIdRef.current = activeId;
+    }
+  }, [activeId]);
 
   // Persist turns to history on every update
   useEffect(() => {
@@ -53,6 +64,8 @@ export default function App() {
       createConversation();
     }
 
+    // Reset scroll position when sending a new message
+    isAtBottomRef.current = true;
     sendMessage(q);
   };
 
@@ -96,14 +109,21 @@ export default function App() {
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-semibold leading-tight">Data Analysis Agent</h1>
-            <p className="text-xs text-muted-foreground">Posez vos questions sur vos données</p>
+            <h1 className="text-base font-semibold leading-tight">
+              Data Analysis Agent
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Posez vos questions sur vos données
+            </p>
           </div>
         </header>
 
         {/* Messages */}
         <div className="flex-1 min-h-0">
-          <ScrollArea className="h-full px-4 py-6">
+          <ScrollArea
+            className="h-full px-4 py-6"
+            onScrollCapture={handleScroll}
+          >
             <div className="max-w-3xl mx-auto flex flex-col gap-8">
               {turns.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
@@ -111,13 +131,15 @@ export default function App() {
                     <Bot className="w-7 h-7 text-muted-foreground" />
                   </div>
                   <p className="text-muted-foreground text-sm max-w-xs">
-                    Posez une question sur vos datasets — SQL, visualisations et analyses en temps réel.
+                    Posez une question sur vos datasets — SQL, visualisations et
+                    analyses en temps réel.
                   </p>
                 </div>
               )}
 
               {turns.map((turn, i) => (
                 <div key={i} className="flex flex-col gap-4">
+                  {/* User question */}
                   <div className="flex items-start gap-3 justify-end">
                     <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-lg">
                       {turn.question}
@@ -127,6 +149,7 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Agent response */}
                   <div className="flex items-start gap-3">
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shrink-0 mt-0.5">
                       <Bot className="w-4 h-4" />
@@ -137,7 +160,9 @@ export default function App() {
                         isStreaming={!turn.done && isLoading}
                       />
                       {turn.error && (
-                        <p className="text-sm text-destructive mt-2">Erreur : {turn.error}</p>
+                        <p className="text-sm text-destructive mt-2">
+                          Erreur : {turn.error}
+                        </p>
                       )}
                     </div>
                   </div>
