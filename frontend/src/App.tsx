@@ -1,15 +1,14 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRef, useEffect } from "react";
+import { Bot, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useChat } from "./hooks/useChat";
 import { useChatHistory } from "./hooks/useChatHistory";
 import { MessageList } from "./components/MessageList";
 import { Sidebar } from "./components/SideBar";
+import { ChatInput } from "./components/ChatInput";
 
 export default function App() {
-  const [input, setInput] = useState("");
   const { turns, isLoading, sendMessage, setTurns } = useChat();
   const {
     conversations,
@@ -55,27 +54,6 @@ export default function App() {
     }
   }, [activeId, turns, updateConversation]);
 
-  const handleSubmit = () => {
-    const q = input.trim();
-    if (!q || isLoading) return;
-    setInput("");
-
-    if (!activeId) {
-      createConversation();
-    }
-
-    // Reset scroll position when sending a new message
-    isAtBottomRef.current = true;
-    sendMessage(q);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   const handleSelectConversation = (id: string) => {
     setActiveId(id);
     const conv = conversations.find((c) => c.id === id);
@@ -91,6 +69,7 @@ export default function App() {
     deleteConversation(id);
     if (id === activeId) setTurns([]);
   };
+
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -177,34 +156,14 @@ export default function App() {
         </div>
 
         {/* Input */}
-        <div className="border-t px-4 py-4 shrink-0">
-          <div className="max-w-3xl mx-auto flex gap-3 items-end">
-            <textarea
-              className="flex-1 resize-none rounded-xl border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[48px] max-h-40"
-              placeholder="Ex : Quel est le total des ventes par région ?"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              disabled={isLoading}
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={!input.trim() || isLoading}
-              size="icon"
-              className="rounded-xl h-12 w-12 shrink-0"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-          <p className="text-center text-xs text-muted-foreground mt-2">
-            Entrée pour envoyer · Shift+Entrée pour un saut de ligne
-          </p>
-        </div>
+        <ChatInput
+          isLoading={isLoading}
+          onSend={(q) => {
+            if (!activeId) createConversation();
+            isAtBottomRef.current = true;
+            sendMessage(q);
+          }}
+        />
       </div>
     </div>
   );

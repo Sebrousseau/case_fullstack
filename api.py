@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -359,6 +359,38 @@ async def chat(request: ChatRequest):
             "X-Accel-Buffering": "no",  # disable Nginx response buffering
         },
     )
+
+# ---------------------------------------------------------------------------
+# Upload dataset endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/api/upload")
+async def upload_dataset(file: UploadFile = File(...)):
+    global datasets, dataset_info, agent
+
+    if not file.filename.endswith(".csv"):
+        return {"error": "Only CSV files are supported."}
+
+    # Sauvegarder dans data/
+    save_path = Path("data") / file.filename
+    content = await file.read()
+    with open(save_path, "wb") as f:
+        f.write(content)
+
+    # Recharger tous les datasets et recréer l'agent
+    datasets, dataset_info = load_datasets()
+    agent = create_agent(dataset_info)
+
+    # Infos sur le nouveau dataset
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", Path(file.filename).stem).strip("_").lower()
+    df = datasets.get(name)
+
+    return {
+        "status": "ok",
+        "name": name,
+        "rows": len(df) if df is not None else 0,
+        "columns": df.columns.tolist() if df is not None else [],
+    }
 
 # ---------------------------------------------------------------------------
 # Health check
