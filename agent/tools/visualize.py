@@ -64,8 +64,28 @@ async def visualize(
         elif result_type == "table":
             result = namespace.get("result", df)
 
-            filepath = f"output/{safe_title}.csv"
-            result.to_csv(filepath, index=False)
+            filepath = f"output/{safe_title}.html"
+
+            html = f"""<!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <style>
+        body {{ font-family: sans-serif; padding: 16px; margin: 0; }}
+        table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
+        th {{ background: #f1f5f9; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; }}
+        td {{ padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }}
+        tr:hover td {{ background: #f8fafc; }}
+        </style>
+        </head>
+        <body>
+        <h3 style="margin-top:0;color:#1e293b">{title}</h3>
+        {result.head(10).to_html(index=False, border=0)}
+        </body>
+        </html>"""
+
+            with open(filepath, "w") as f:
+                f.write(html)
 
             return (
                 f"Table created: {title}\n"

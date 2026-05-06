@@ -24,7 +24,7 @@ function formatDate(ts: number): string {
 
 export function Sidebar({ conversations, activeId, onSelect, onNew, onDelete }: Props) {
   return (
-    <aside className="w-64 shrink-0 border-r flex flex-col bg-muted/30 h-screen">
+    <aside className="w-96 shrink-0 border-r flex flex-col bg-muted/30 h-screen">
       {/* Header */}
       <div className="px-3 py-4 flex items-center justify-between shrink-0">
         <span className="text-sm font-semibold text-foreground">Historique</span>
