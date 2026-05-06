@@ -1,113 +1,52 @@
 # Case Technique — Développeur Full Stack
 
-## Contexte
-
-Tu reçois un **agent d'analyse de données** qui fonctionne en mode CLI (terminal).
-
-L'agent peut :
-
-- Répondre à des questions sur des données en générant du **SQL** (via DuckDB)
-- Créer des **visualisations** avec Plotly
-- Expliquer son **raisonnement** (balises `<thinking>`)
-- Enchaîner les étapes automatiquement via des **tool calls**
-
-L'agent est construit avec [PydanticAI](https://ai.pydantic.dev/).
-
----
-
-## Objectif
-
-**Transformer cet agent CLI en une application web complète.**
-
-L'utilisateur doit pouvoir poser des questions dans une interface web et voir en temps réel :
-
-1. Le **raisonnement** de l'agent (thinking) — affiché progressivement
-2. Les **appels d'outils** (tool calls) — nom, arguments, résultat
-3. Les **visualisations** Plotly / tableaux de données
-4. La **réponse finale** de l'agent
-
----
-
-## Ce qui est fourni
-
-```
-case_fullstack/
-├── agent/
-│   ├── agent.py              # Création de l'agent PydanticAI
-│   ├── context.py            # Contexte injecté dans les tools
-│   ├── prompt.py             # System prompt
-│   └── tools/
-│       ├── query_data.py     # Exécution SQL via DuckDB
-│       └── visualize.py      # Création de visualisations Plotly
-├── data/                     # Fichiers CSV (tes données de test)
-├── output/                   # Visualisations générées
-├── main.py                   # Script CLI de démonstration
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .env.example
-└── README.md
-```
-
----
-
 ## Setup
 
 ```bash
-# 1. Configurer la clé API
 cp .env.example .env
 # Éditer .env avec ta clé API
 
-# 2. Ajouter des fichiers CSV dans data/
-
-# 3. Lancer le CLI via Docker
-docker compose run --rm agent
+docker compose up --build
 ```
 
-> Le volume `data/` est monté dans le container — tu peux ajouter/modifier des CSV sans rebuild.
-> Les visualisations générées sont dans `output/`.
+L'application est accessible sur [http://localhost:5173](http://localhost:5173).
 
 ---
 
-## Ce qui est attendu
+## Ce qui a été ajouté
 
-### Minimum requis
+### Backend (`api.py`)
 
-- [ ] **Backend API** avec endpoint de streaming (SSE ou WebSocket)
-- [ ] **Frontend web** avec :
-  - [ ] Champ texte pour poser des questions
-  - [ ] Affichage **streaming** du thinking (collapsible/dépliable)
-  - [ ] Affichage des **tool calls** (nom de l'outil, arguments, résultat)
-  - [ ] Rendu des **visualisations Plotly** (graphiques interactifs)
-  - [ ] Rendu des **tableaux** de données
-- [ ] **Code propre** et structuré
+Endpoint SSE `/api/chat` qui streame les événements de l'agent en temps réel : `thinking`, `tool_call`, `tool_result`, `text`, `done`.
 
----
+Le `ThinkingStreamParser` parse les balises `<thinking>...</thinking>` au fil des tokens sans attendre la réponse complète, et route chaque chunk vers le bon type d'événement.
 
-## Stack technique
+### Frontend
 
-- **Backend** : FastAPI 
-- **Frontend** : Libre React
-- **Streaming** : SSE ou WebSocket (à ton choix)
+Interface React avec affichage en temps réel du raisonnement (collapsible), des tool calls, des visualisations Plotly et des tableaux — le tout streamé token par token.
 
----
+Historique des conversations en sidebar.
 
-## Critères d'évaluation
+### Upload de CSV depuis le chat
 
-| Critère | Description |
-|---------|-------------|
-| **Fonctionnalité** | Le streaming fonctionne, le thinking s'affiche en temps réel, les tool calls sont visibles, les visualisations s'affichent |
-| **Code** | Propre, structuré, lisible, bien découpé |
-| **UX** | L'expérience utilisateur est fluide et intuitive |
-| **Architecture** | Bonne séparation frontend / backend, gestion des états cohérente |
+L'endpoint `/api/upload` permet de charger un nouveau dataset directement depuis l'interface via le bouton 📎, sans rebuild ni redémarrage. L'agent intègre immédiatement le fichier et confirme le chargement dans le chat.
+
+### Tableaux de données
+
+L'outil `visualize` génère un fichier `.html` pour les `result_type="table"` (via `pandas.to_html`), ce qui permet de les afficher dans le même composant iframe que les figures Plotly.
 
 ---
 
-## Ressources utiles
+## Tests
 
-- [PydanticAI — Documentation](https://ai.pydantic.dev/)
-- [PydanticAI — Streaming](https://ai.pydantic.dev/streaming/)
-- [PydanticAI — Tools](https://ai.pydantic.dev/tools/)
-- [Plotly.js — React integration](https://plotly.com/javascript/react/)
-- [FastAPI — Streaming Response](https://fastapi.tiangolo.com/advanced/custom-response/#streamingresponse)
-- [Server-Sent Events (SSE)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
+```bash
+docker compose run --rm agent pytest tests/ -v
+```
+
+Le `ThinkingStreamParser` est testé sur 8 cas : texte sans balise, balise complète, balise répartie sur plusieurs chunks, blocs multiples, input vide, flush vide, balise non fermée, texte avant balise. Les endpoints `/api/health` et `/api/chat` sont également couverts.
+
+---
+
+## Note sur le thinking
+
+Deux modes sont supportés côté backend : le thinking natif via `ThinkingPartDelta` (Claude 3.7 Sonnet avec extended thinking), et les balises `<thinking>` dans le flux texte pour les autres modèles. Avec GPT-4o, le raisonnement est internalisé par le modèle et n'apparaît pas dans le flux — c'est un comportement intrinsèque à ces modèles, indépendant de l'implémentation.
