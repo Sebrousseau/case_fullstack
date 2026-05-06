@@ -176,8 +176,6 @@ async def chat(request: ChatRequest):
                             yield sse(kind, {"content": chunk})
                     yield sse("done", {"content": ""})
 
-                # Tool call (compat: emitted either as FunctionToolCallEvent
-                # or as PartStartEvent with ToolCallPart depending on provider/version)
                 elif isinstance(event, FunctionToolCallEvent):
                     call_id = event.part.tool_call_id
                     if call_id and call_id in emitted_tool_calls:
@@ -186,13 +184,21 @@ async def chat(request: ChatRequest):
                         args = event.part.args_as_dict()
                     except Exception:
                         args = {}
-                    # Some providers emit an early tool-call event with empty args,
-                    # followed by a richer event. Skip the empty one to avoid
-                    # rendering a blank duplicate and keep the detailed payload.
                     if not args:
                         continue
                     if call_id:
                         emitted_tool_calls.add(call_id)
+
+                    thinking_lines = []
+                    if "description" in args:
+                        thinking_lines.append(args["description"])
+                    if "sql" in args:
+                        thinking_lines.append(f"Requête SQL : {args['sql']}")
+                    if "title" in args:
+                        thinking_lines.append(f"Visualisation : {args['title']}")
+                    if thinking_lines:
+                        yield sse("thinking", {"content": "\n".join(thinking_lines)})
+
                     yield sse("tool_call", {
                         "tool": event.part.tool_name,
                         "args": args,
